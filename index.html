@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body { font-family: Arial; text-align:center; background:#eee; }
+
+/* Sections */
+#voteSection, #adminSection { display:none; }
+
+/* Inputs */
+input { padding:10px; margin:8px; width:240px; }
+
+/* Row */
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:10px;
+  padding:10px;
+  background:#fff;
+  border-radius:10px;
+}
+
+/* Flags */
+.flag {
+  width:150px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+}
+
+.bjp { background:linear-gradient(orange 50%, green 50%); }
+.aiadmk { background:linear-gradient(black 33%, white 33%, white 66%, red 66%); }
+.ntk { background:green; color:white; }
+.tvk { background:linear-gradient(red 33%, yellow 33%, yellow 66%, red 66%); }
+.dmk { background:linear-gradient(black 50%, red 50%); color:white; }
+.congress { background:linear-gradient(orange 33%, white 33%, white 66%, green 66%); }
+
+/* Button */
+.vote-btn {
+  padding:10px;
+  cursor:pointer;
+  border:none;
+}
+.vote-btn:active {
+  transform:scale(0.9);
+}
+
+/* POPUP */
+.popup {
+  position:fixed;
+  top:0; left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+
+.popup-box {
+  background:#fff;
+  padding:30px;
+  border-radius:12px;
+  animation:pop 0.3s ease;
+}
+
+@keyframes pop {
+  from { transform:scale(0.5); }
+  to { transform:scale(1); }
+}
+
+.success {
+  color:green;
+  font-size:22px;
+}
+
+/* Table */
+table {
+  width:90%;
+  margin:auto;
+  border-collapse:collapse;
+}
+td, th {
+  border:1px solid #ccc;
+  padding:8px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginSection">
+  <h2>Login</h2>
+  <input id="name" placeholder="Name"><br>
+  <input id="phone" placeholder="Phone"><br>
+  <input id="pass" placeholder="Password"><br>
+  <button onclick="login()">Login</button><br><br>
+  <button onclick="openAdmin()">Winner Page</button>
+</div>
+
+<!-- VOTING -->
+<div id="voteSection">
+  <h3>Ballot Unit</h3>
+
+  <div class="row"><div class="flag bjp">BJP</div><button class="vote-btn" onclick="vote('BJP')">Vote</button></div>
+  <div class="row"><div class="flag aiadmk">AIADMK</div><button class="vote-btn" onclick="vote('AIADMK')">Vote</button></div>
+  <div class="row"><div class="flag ntk">NTK</div><button class="vote-btn" onclick="vote('NTK')">Vote</button></div>
+  <div class="row"><div class="flag tvk">TVK</div><button class="vote-btn" onclick="vote('TVK')">Vote</button></div>
+  <div class="row"><div class="flag dmk">DMK</div><button class="vote-btn" onclick="vote('DMK')">Vote</button></div>
+  <div class="row"><div class="flag congress">CONGRESS</div><button class="vote-btn" onclick="vote('CONGRESS')">Vote</button></div>
+
+</div>
+
+<!-- ADMIN -->
+<div id="adminSection">
+  <h2>Winner Dashboard</h2>
+  <h3 id="winner"></h3>
+
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Phone</th><th>Party</th></tr>
+    </thead>
+    <tbody id="data"></tbody>
+  </table>
+
+  <h3 id="count"></h3>
+</div>
+
+<!-- POPUP -->
+<div class="popup" id="popup">
+  <div class="popup-box">
+    <div class="success">✅ Successfully Voted</div>
+  </div>
+</div>
+
+<script>
+let votes = JSON.parse(localStorage.getItem("votes")) || [];
+
+/* LOGIN */
+function login() {
+  let name = document.getElementById("name").value;
+  let phone = document.getElementById("phone").value;
+
+  if(localStorage.getItem(phone)) {
+    alert("Already voted!");
+    return;
+  }
+
+  if(phone.length === 10) {
+    localStorage.setItem("currentUser", phone);
+    localStorage.setItem("currentName", name);
+
+    document.getElementById("loginSection").style.display="none";
+    document.getElementById("voteSection").style.display="block";
+  }
+}
+
+/* VOTE */
+function vote(party) {
+  let phone = localStorage.getItem("currentUser");
+  let name = localStorage.getItem("currentName");
+
+  votes.push({name, phone, party});
+  localStorage.setItem("votes", JSON.stringify(votes));
+  localStorage.setItem(phone, "done");
+
+  document.getElementById("popup").style.display = "flex";
+
+  setTimeout(()=>{
+    location.reload();
+  },1500);
+}
+
+/* ADMIN */
+function openAdmin() {
+  let pass = prompt("Enter Admin Password");
+
+  if(pass === "admin123") {
+
+    // ✅ CLEAR OLD VOTES OPTION
+    if(confirm("Do you want to clear all old votes?")) {
+      localStorage.clear();
+      votes = [];
+      alert("All old votes cleared!");
+    }
+
+    document.getElementById("loginSection").style.display="none";
+    document.getElementById("adminSection").style.display="block";
+    loadData();
+
+  } else {
+    alert("Wrong Password");
+  }
+}
+
+/* LOAD DATA */
+function loadData() {
+  let table = document.getElementById("data");
+  table.innerHTML = ""; // ✅ FIX duplicate rows
+
+  let count = {};
+
+  votes.forEach(v=>{
+    table.innerHTML += `<tr>
+      <td>${v.name}</td>
+      <td>${v.phone}</td>
+      <td>${v.party}</td>
+    </tr>`;
+
+    count[v.party] = (count[v.party] || 0) + 1;
+  });
+
+  let winner = "";
+  let max = 0;
+
+  for(let p in count) {
+    if(count[p] > max) {
+      max = count[p];
+      winner = p;
+    }
+  }
+
+  document.getElementById("winner").innerText =
+    "Winner: " + winner + " (" + max + " votes)";
+
+  document.getElementById("count").innerText =
+    "All Votes: " + JSON.stringify(count);
+}
+</script>
+
+</body>
+</html>
